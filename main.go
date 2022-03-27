@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/yangtizi/crypto/aes"
+	"github.com/yangtizi/crypto/googleauth"
 	"github.com/yangtizi/crypto/gzip"
 	"github.com/yangtizi/crypto/zlib"
 )
@@ -13,6 +14,7 @@ func main() {
 	aesDemo2()
 	zlibDemo()
 	gzipDemo()
+	googleauthDemo("yangtizi")
 }
 
 func aesDemo1() {
@@ -62,4 +64,24 @@ func gzipDemo() {
 	c := gzip.UnCompress(b)
 	fmt.Println(c)
 	fmt.Println(string(c))
+}
+
+func googleauthDemo(user string) (secret, code string) {
+	// 秘钥
+	secret = googleauth.GetSecret()
+	fmt.Println("Secret:", secret)
+
+	// 动态码(每隔30s会动态生成一个6位数的数字)
+	code, err := googleauth.GetCode(secret)
+	fmt.Println("Code:", code, err)
+
+	// 用户名
+	qrCode := googleauth.GetQrcode(user, code)
+	fmt.Println("Qrcode", qrCode)
+
+	// 打印二维码地址
+	qrCodeUrl := googleauth.GetQrcodeUrl(user, secret)
+	fmt.Println("QrcodeUrl", qrCodeUrl)
+
+	return
 }
