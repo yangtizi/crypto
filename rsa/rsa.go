@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"os"
 
 	"github.com/yangtizi/crypto/zlib"
 )
@@ -64,4 +65,111 @@ func WxCoRSA(origData []byte, pubKey []byte) ([]byte, error) {
 	}
 
 	return buffer.Bytes(), nil //RSA算法加密
+}
+
+// 生成 rsakey
+
+func GenerateRsaKey(keySize int, dirPath string) error {
+	privateKey, err := rsa.GenerateKey(rand.Reader, keySize)
+	if err != nil {
+		return err
+	}
+	// x509
+	derText := x509.MarshalPKCS1PrivateKey(privateKey)
+	// pem Block
+	block := &pem.Block{
+		Type:  "rsa private key",
+		Bytes: derText,
+	}
+	// just joint, caller must let dirPath right
+	file, err := os.Create(dirPath + "private.pem")
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+	err = pem.Encode(file, block)
+	if err != nil {
+		return err
+	}
+	// get PublicKey from privateKey
+	publicKey := privateKey.PublicKey
+	derStream, err := x509.MarshalPKIXPublicKey(&publicKey)
+	if err != nil {
+		return err
+	}
+	block = &pem.Block{
+		Type:  "rsa public key",
+		Bytes: derStream,
+	}
+	file, err = os.Create(dirPath + "public.pem")
+	if err != nil {
+		return err
+	}
+	err = pem.Encode(file, block)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func Encrypt(plainText []byte, filePath string) ([]byte, error) {
+	// get pem.Block
+	block, err := GetKey(filePath)
+	if err != nil {
+		return nil, err
+	}
+	// X509
+	publicInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	publicKey, flag := publicInterface.(*rsa.PublicKey)
+	if !flag {
+		return nil, err
+	}
+	// encrypt
+	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, plainText)
+	if err != nil {
+		return nil, err
+	}
+	return cipherText, nil
+}
+
+func Decrypt(cipherText []byte, filePath string) (plainText []byte, err error) {
+	// get pem.Block
+	block, err := GetKey(filePath)
+	if err != nil {
+		return nil, err
+	}
+	// get privateKey
+	privateKey, _ := x509.ParsePKCS1PrivateKey(block.Bytes)
+
+	// get plainText use privateKey
+	plainText, err3 := rsa.DecryptPKCS1v15(rand.Reader, privateKey, cipherText)
+	if err3 != nil {
+		return nil, err
+	}
+	return plainText, nil
+}
+
+func GetKey(filePath string) (*pem.Block, error) {
+	file, err := os.Open(filePath)
+
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	buf := make([]byte, fileInfo.Size())
+	_, err = file.Read(buf)
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(buf)
+	return block, nil
 }

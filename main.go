@@ -6,6 +6,7 @@ import (
 	"github.com/yangtizi/crypto/aes"
 	"github.com/yangtizi/crypto/googleauth"
 	"github.com/yangtizi/crypto/gzip"
+	"github.com/yangtizi/crypto/rsa"
 	"github.com/yangtizi/crypto/zlib"
 )
 
@@ -15,6 +16,7 @@ func main() {
 	zlibDemo()
 	gzipDemo()
 	googleauthDemo("yangtizi")
+	rsaDemo1()
 }
 
 func aesDemo1() {
@@ -84,4 +86,14 @@ func googleauthDemo(user string) (secret, code string) {
 	fmt.Println("QrcodeUrl", qrCodeUrl)
 
 	return
+}
+
+func rsaDemo1() {
+	rsa.GenerateRsaKey(2048, "./")
+
+	a, _ := rsa.Encrypt([]byte("I Love Lisa"), "./public.pem")
+
+	b, _ := rsa.Decrypt(a, "./private.pem")
+
+	fmt.Println(string(b))
 }
